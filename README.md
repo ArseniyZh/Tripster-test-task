@@ -1,8 +1,9 @@
 # Tripster-test-task
 <hr>
 
-swagger <br>
-ссылка
+Проект задеплоен: <br>
+<a href="http://95.163.231.52:8888/swagger/">swagger</a> <br>
+<a href="http://95.163.231.52:8888/redoc/">redoc</a>
 <br>
 
 <ol>
