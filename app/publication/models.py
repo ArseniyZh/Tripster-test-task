@@ -7,9 +7,11 @@ class Publication(BaseModel):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     text = models.TextField()
 
+    @property
     def votes_count(self):
         return Vote.objects.filter(publication=self).count()
 
+    @property
     def rating(self):
         queryset = Vote.objects.filter(publication=self)
         rating = queryset.filter(vote=Vote.POSITIVE).count() - queryset.filter(vote=Vote.NEGATIVE).count()
