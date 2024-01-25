@@ -17,7 +17,8 @@
 <h3>Локальный запуск</h3>
 <ol>
     <li>Клонируем репозиторий 'git clone https://github.com/ArseniyZh/Tripster-test-task'</li>
-    <li>Заходим в склонированный репозиторий и прописываем в консоли 'docker compose up -d --build'</li>
+    <li>Заходим в каталог 'app' и запускаем команду 'pytest'</li>
+    <li>Прописываем в консоли 'docker compose up -d --build'</li>
     <li>Переходим на <a href="http://localhost:8888/swagger/">http://localhost:8888/swagger/</a></li>
     <li>Используем предыдущую инструкцию</li>
 </ol>
