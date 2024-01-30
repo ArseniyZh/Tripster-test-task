@@ -1,8 +1,10 @@
 from django.db.models import Sum, Count, Case, When, IntegerField
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics, status
+from rest_framework import status
+from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from publication.models import Publication, Vote
@@ -13,101 +15,80 @@ from publication.serializers import (
     PublicationSerializer,
     VoteCreateSerializer,
     VoteUpdateSerializer,
+    VoteSerializer,
 )
 
 
-class PublicationCreateView(generics.CreateAPIView):
+class PublicationViewSet(viewsets.ModelViewSet):
     queryset = Publication.objects.all()
-    serializer_class = PublicationSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated, PublicationBelongToUser,)
+
+    def get_serializer_class(self):
+        if self.action in ["list"]:
+            return PublicationListSerializer
+        return PublicationSerializer
+
+    @swagger_auto_schema(manual_parameters=top_params)
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+
+        top = request.GET.get("top")
+        created_at = request.GET.get("created_at")
+
+        if created_at:
+            queryset = queryset.filter(created_at=int(created_at))
+        if top:
+            queryset = queryset.annotate(
+                rating=Sum(
+                    Case(
+                        When(vote__vote=Vote.POSITIVE, then=1),
+                        When(vote__vote=Vote.NEGATIVE, then=-1),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                votes_count=Count("vote", distinct=True),
+            ).order_by("-rating")[:int(top)]
+
+        serializer = PublicationListSerializer(queryset, many=True)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
 
-class PublicationUpdateView(generics.UpdateAPIView):
-    queryset = Publication.objects.all()
-    serializer_class = PublicationSerializer
-    permission_classes = (IsAuthenticated, PublicationBelongToUser,)
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-
-        partial = kwargs.pop("partial", False)
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-
-        return Response(serializer.data)
-
-
-class PublicationDeleteView(generics.DestroyAPIView):
-    queryset = Publication.objects.all()
-    permission_classes = (IsAuthenticated, PublicationBelongToUser,)
-
-
-class PublicationListView(generics.ListAPIView):
-    serializer_class = PublicationListSerializer
-    permission_classes = (AllowAny,)
-
-    @swagger_auto_schema(
-        manual_parameters=top_params,
-    )
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-
-    def get_queryset(self):
-        top = int(self.request.GET.get("top", 10))
-        top_publications = Publication.objects.annotate(
-            rating=Sum(
-                Case(
-                    When(vote__vote=Vote.POSITIVE, then=1),
-                    When(vote__vote=Vote.NEGATIVE, then=-1),
-                    default=0,
-                    output_field=IntegerField()
-                )
-            ),
-            votes_count=Count('vote', distinct=True),
-        ).order_by("-rating")[:top]
-        return top_publications
-
-
-class VoteCreateView(generics.CreateAPIView):
+class VoteViewSet(viewsets.ModelViewSet):
     queryset = Vote.objects.all()
-    serializer_class = VoteCreateSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated, VoteBelongToUser,)
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return VoteCreateSerializer
+        elif self.action == "update":
+            return VoteUpdateSerializer
+        return VoteSerializer
 
     def perform_create(self, serializer):
         user = self.request.user
         publication_id = self.request.data.get("publication")
         publication = Publication.objects.get(id=publication_id)
 
-        # Проверяем, голосовал ли пользователь за эту публикацию ранее
         existing_vote = Vote.objects.filter(user=user, publication=publication).first()
         if existing_vote:
             raise ValidationError({"detail": "You have already voted for this publication."})
 
         serializer.save(user=user, publication=publication)
-        publication.refresh_from_db()  # Обновляем данные публикации после голосования
+        publication.refresh_from_db()
         return Response({"detail": "Vote has been recorded successfully."}, status=status.HTTP_201_CREATED)
 
+    def destroy(self, request, *args, **kwargs):
+        vote = self.get_object()
+        publication = vote.publication
+        user = self.request.user
 
-class VoteUpdateView(generics.UpdateAPIView):
-    queryset = Vote.objects.all()
-    serializer_class = VoteUpdateSerializer
-    permission_classes = (IsAuthenticated, VoteBelongToUser,)
+        if vote.user != user:
+            raise PermissionDenied({"detail": "You don't have permission to undo this vote."})
 
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-
-        partial = kwargs.pop("partial", False)
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-
-        return Response(serializer.data)
-
-
-class VoteDeleteView(generics.DestroyAPIView):
-    queryset = Vote.objects.all()
-    permission_classes = (IsAuthenticated, VoteBelongToUser,)
+        vote.delete()
+        publication.refresh_from_db()
+        return Response({"detail": "Vote has been undone successfully."}, status=status.HTTP_200_OK)

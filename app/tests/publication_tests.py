@@ -47,7 +47,7 @@ def vote_instance(publication_instance):
 def test_create_publication_authenticated_user(api_client, user_instance):
     api_client.force_authenticate(user=user_instance)
 
-    url = reverse("publication_create")
+    url = reverse("publication-list")
     data = {"text": "Test publication"}
     response = api_client.post(url, data, format="json")
 
@@ -57,7 +57,7 @@ def test_create_publication_authenticated_user(api_client, user_instance):
 
 @pytest.mark.django_db
 def test_create_publication_unauthenticated_user(api_client):
-    url = reverse("publication_create")
+    url = reverse("publication-list")
     data = {"text": "Test publication"}
     response = api_client.post(url, data, format="json")
 
@@ -70,7 +70,7 @@ def test_update_publication_authenticated_user(api_client, user_instance):
 
     publication = Publication.objects.create(author=user_instance, text="Original text")
 
-    url = reverse("publication_update", args=[publication.id])
+    url = reverse("publication-detail", args=[publication.id])
     data = {"text": "Updated text"}
     response = api_client.put(url, data, format="json")
 
@@ -83,7 +83,7 @@ def test_update_publication_authenticated_user(api_client, user_instance):
 def test_update_publication_unauthenticated_user(api_client, user_instance):
     publication = Publication.objects.create(author=user_instance, text="Original text")
 
-    url = reverse("publication_update", args=[publication.id])
+    url = reverse("publication-detail", args=[publication.id])
     data = {"text": "Updated text"}
     response = api_client.put(url, data, format="json")
 
@@ -96,7 +96,7 @@ def test_delete_publication_authenticated_user(api_client, user_instance):
 
     publication = Publication.objects.create(author=user_instance, text="Test text")
 
-    url = reverse("publication_delete", args=[publication.id])
+    url = reverse("publication-detail", args=[publication.id])
     response = api_client.delete(url)
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -107,7 +107,7 @@ def test_delete_publication_authenticated_user(api_client, user_instance):
 def test_delete_publication_unauthenticated_user(api_client, user_instance):
     publication = Publication.objects.create(author=user_instance, text="Test text")
 
-    url = reverse("publication_delete", args=[publication.id])
+    url = reverse("publication-detail", args=[publication.id])
     response = api_client.delete(url)
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -118,7 +118,7 @@ def test_delete_publication_unauthenticated_user(api_client, user_instance):
 def test_create_vote_authenticated_user(api_client, user_instance, publication_instance):
     api_client.force_authenticate(user=user_instance)
 
-    url = reverse("vote_create")
+    url = reverse("vote-list")
     data = {"publication": publication_instance.id, "vote": Vote.POSITIVE}
     response = api_client.post(url, data, format="json")
 
@@ -128,7 +128,7 @@ def test_create_vote_authenticated_user(api_client, user_instance, publication_i
 
 @pytest.mark.django_db
 def test_create_vote_unauthenticated_user(api_client, user_instance, publication_instance):
-    url = reverse("vote_create")
+    url = reverse("vote-list")
     data = {"publication": publication_instance.id, "vote": Vote.POSITIVE}
     response = api_client.post(url, data, format="json")
 
@@ -139,7 +139,7 @@ def test_create_vote_unauthenticated_user(api_client, user_instance, publication
 def test_update_vote_authenticated_user(api_client, user_instance, vote_instance):
     api_client.force_authenticate(user=user_instance)
 
-    url = reverse("vote_update", args=[vote_instance.id])
+    url = reverse("vote-detail", args=[vote_instance.id])
     data = {"vote": Vote.NEGATIVE}
     response = api_client.patch(url, data, format="json")
 
@@ -150,7 +150,7 @@ def test_update_vote_authenticated_user(api_client, user_instance, vote_instance
 
 @pytest.mark.django_db
 def test_update_vote_unauthenticated_user(api_client, user_instance, vote_instance):
-    url = reverse("vote_update", args=[vote_instance.id])
+    url = reverse("vote-detail", args=[vote_instance.id])
     data = {"vote": Vote.NEGATIVE}
     response = api_client.patch(url, data, format="json")
 
@@ -161,15 +161,15 @@ def test_update_vote_unauthenticated_user(api_client, user_instance, vote_instan
 def test_delete_vote_authenticated_user(api_client, user_instance, vote_instance):
     api_client.force_authenticate(user=user_instance)
 
-    url = reverse("vote_delete", args=[vote_instance.id])
+    url = reverse("vote-detail", args=[vote_instance.id])
     response = api_client.delete(url)
 
-    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert response.status_code == status.HTTP_200_OK
 
 
 @pytest.mark.django_db
 def test_delete_vote_unauthenticated_user(api_client, user_instance, vote_instance):
-    url = reverse("vote_delete", args=[vote_instance.id])
+    url = reverse("vote-detail", args=[vote_instance.id])
     response = api_client.delete(url)
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED

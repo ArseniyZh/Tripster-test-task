@@ -1,25 +1,11 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from publication.views import PublicationViewSet, VoteViewSet
 
-from publication.views import (
-    PublicationCreateView,
-    PublicationUpdateView,
-    PublicationDeleteView,
-    PublicationListView,
-
-    VoteCreateView,
-    VoteUpdateView,
-    VoteDeleteView,
-)
-
-vote = "vote/"
+router = DefaultRouter()
+router.register(r"publication", PublicationViewSet, basename="publication")
+router.register(r"vote", VoteViewSet, basename="vote")
 
 urlpatterns = [
-    path("create/", PublicationCreateView.as_view(), name="publication_create"),
-    path("update/<int:pk>/", PublicationUpdateView.as_view(), name="publication_update"),
-    path("delete/<int:pk>/", PublicationDeleteView.as_view(), name="publication_delete"),
-    path("list/", PublicationListView.as_view(), name="publication_list"),
-
-    path(vote + "create/", VoteCreateView.as_view(), name="vote_create"),
-    path(vote + "update/<int:pk>/", VoteUpdateView.as_view(), name="vote_update"),
-    path(vote + "delete/<int:pk>/", VoteDeleteView.as_view(), name="vote_delete"),
+    path("", include(router.urls)),
 ]

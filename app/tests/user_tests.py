@@ -6,7 +6,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from .factories import UserFactory
+from tests.factories import UserFactory
 
 
 @pytest.fixture
