@@ -31,24 +31,31 @@ class PublicationViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(manual_parameters=top_params)
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
+        params = request.GET
 
-        top = request.GET.get("top")
-        created_at = request.GET.get("created_at")
-
-        if created_at:
+        if created_at := params.get("created_at"):
             queryset = queryset.filter(created_at=int(created_at))
-        if top:
-            queryset = queryset.annotate(
-                rating=Sum(
-                    Case(
-                        When(vote__vote=Vote.POSITIVE, then=1),
-                        When(vote__vote=Vote.NEGATIVE, then=-1),
-                        default=0,
-                        output_field=IntegerField()
-                    )
-                ),
-                votes_count=Count("vote", distinct=True),
-            ).order_by("-rating")[:int(top)]
+        if created_at__gte := params.get("created_at__gte"):
+            queryset = queryset.filter(created_at__gte=int(created_at__gte))
+        if created_at__lte := params.get("created_at__lte"):
+            queryset = queryset.filter(created_at__lte=int(created_at__lte))
+
+        queryset = queryset.annotate(
+            rating=Sum(
+                Case(
+                    When(vote__vote=Vote.POSITIVE, then=1),
+                    When(vote__vote=Vote.NEGATIVE, then=-1),
+                    default=0,
+                    output_field=IntegerField()
+                )
+            ),
+            votes_count=Count("vote", distinct=True),
+        )
+
+        if sorted_by_rating := params.get("sorted_by_rating"):
+            queryset = queryset.order_by("-rating")
+        if sorted_by_date := params.get("sorted_by_date"):
+            queryset = queryset.order_by("-created_at")
 
         serializer = PublicationListSerializer(queryset, many=True)
         return Response(serializer.data)
